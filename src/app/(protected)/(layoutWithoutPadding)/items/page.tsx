@@ -19,7 +19,7 @@ export const initializeSocket = (): Socket => {
 
       socket.on("connect", () => {
         console.log("Connected to the socket server:", socket?.id);
-        retryAttempts = 0; // Reset retry attempts on successful connection
+        retryAttempts = 0;
       });
 
       socket.on("disconnect", () => {
