@@ -1,7 +1,6 @@
 import axios from "axios";
 const https = require("https");
 
-// Create an HTTPS agent with certificate verification disabled
 const agent = new https.Agent({
   rejectUnauthorized: false,
 });
