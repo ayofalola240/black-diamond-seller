@@ -55,7 +55,7 @@ export default function Page({ searchParams }: IProps) {
 
   return (
     <section className="py-[60px] px-6 gap-4 max-w-container mx-auto flex-col flex">
-      <SharedItemComponent useInProfile page={page} limit={limit} isLoading={isLoading} error={error} auctions={auctions} setStatus={setStatus} status={status} />
+      <SharedItemComponent page={page} limit={limit} isLoading={isLoading} error={error} auctions={auctions} setStatus={setStatus} status={status} />
     </section>
   );
 }

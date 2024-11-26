@@ -5,8 +5,6 @@ export function middleware(request: NextRequest) {
   const nextUrl = request.nextUrl;
   const isLoggedIn = request.cookies.get("jwt"); // Retrieve the JWT cookie
 
-  console.log("JWT Cookie:", isLoggedIn);
-
   // Detect route types
   const isApiRoute = nextUrl.pathname.startsWith("/api");
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
