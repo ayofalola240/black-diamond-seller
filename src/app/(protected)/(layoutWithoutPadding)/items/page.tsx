@@ -1,61 +1,62 @@
-"use client";
+import { io, Socket } from "socket.io-client";
 
-import { SharedItemComponent } from "@/components/shared";
-import { auctionLimit } from "@/lib/utils";
-import { initializeSocket } from "@/lib/socket";
-import { useGetAuctions } from "@/hooks";
-import { useEffect, useState } from "react";
+let socket: Socket | null = null;
+let retryAttempts = 0; // Track retry attempts
+const maxRetries = 5; // Maximum number of retry attempts
+const retryInterval = 5000; // Retry interval in milliseconds
 
-interface IProps {
-  searchParams?: { [key: string]: string | string[] | undefined };
-}
+export const initializeSocket = (): Socket => {
+  if (!process.env.NEXT_PUBLIC_Backend_URL) {
+    throw new Error("NEXT_PUBLIC_Backend_URL is not defined in environment variables.");
+  }
 
-export default function Page({ searchParams }: IProps) {
-  const page = Number(searchParams?.page) || 1;
-  const limit = Number(searchParams?.limit) || auctionLimit;
-  const [status, setStatus] = useState("all"); // Dynamic status
+  if (!socket) {
+    try {
+      socket = io(process.env.NEXT_PUBLIC_Backend_URL, {
+        transports: ["websocket"],
+        withCredentials: true,
+      });
 
-  // Use the custom hook to fetch auctions
-  const {
-    isLoading,
-    error,
-    data: auctions,
-    refetch,
-  } = useGetAuctions({
-    page,
-    limit,
-    status,
-  });
+      socket.on("connect", () => {
+        console.log("Connected to the socket server:", socket?.id);
+        retryAttempts = 0; // Reset retry attempts on successful connection
+      });
 
-  useEffect(() => {
-    console.log("Initializing socket...");
-    const socket = initializeSocket();
+      socket.on("disconnect", () => {
+        console.log("Disconnected from the socket server");
+        attemptReconnect();
+      });
 
-    const handleAuctionStart = (data: any) => {
-      console.log("Auction started:", data);
-      refetch(); // Refetch data when auction starts
-      setStatus("all");
-    };
+      socket.on("connect_error", (error) => {
+        console.error("Socket connection error:", error.message);
+        attemptReconnect();
+      });
+    } catch (error) {
+      console.error("Failed to initialize socket:", error);
+      throw error;
+    }
+  }
 
-    const handleAuctionComplete = (data: any) => {
-      console.log("Auction completed:", data);
-      refetch(); // Refetch data when auction completes
-      setStatus("all");
-    };
+  return socket;
+};
 
-    socket.on("auctionStart", handleAuctionStart);
-    socket.on("auctionComplete", handleAuctionComplete);
+const attemptReconnect = () => {
+  if (retryAttempts < maxRetries) {
+    retryAttempts++;
+    console.log(`Retrying to connect... Attempt ${retryAttempts} of ${maxRetries}`);
+    setTimeout(() => {
+      if (socket && !socket.connected) {
+        socket.connect();
+      }
+    }, retryInterval);
+  } else {
+    console.error("Max retry attempts reached. Could not reconnect to the socket server.");
+  }
+};
 
-    return () => {
-      console.log("Cleaning up socket...");
-      socket.off("auctionStart", handleAuctionStart);
-      socket.off("auctionComplete", handleAuctionComplete);
-    };
-  }, [refetch]); // Ensure `refetch` is in the dependency array
-
-  return (
-    <section className="py-[60px] px-6 gap-4 max-w-container mx-auto flex-col flex">
-      <SharedItemComponent page={page} limit={limit} isLoading={isLoading} error={error} auctions={auctions} setStatus={setStatus} status={status} />
-    </section>
-  );
-}
+export const getSocket = (): Socket => {
+  if (!socket) {
+    throw new Error("Socket connection has not been initialized. Call initializeSocket first.");
+  }
+  return socket;
+};
